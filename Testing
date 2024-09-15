@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAS Pain Scale</title>
+    <style>
+        /* Container for the VAS scale */
+        .container {
+            width: 70%;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        
+        /* Horizontal scale line */
+        #scale {
+            width: 80%;
+            height: 4px;
+            background: #000;
+            margin: 40px auto;
+            position: relative;
+        }
+        
+        /* Red marker to drag on the scale */
+        #marker {
+            width: 15px;
+            height: 15px;
+            background: red;
+            border-radius: 50%;
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            cursor: pointer;
+        }
+        
+        /* Labels for 0 and 10 on the scale */
+        #scale-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            margin: 0 auto;
+        }
+        
+        /* Submit button styling */
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VAS Pain Scale</h1>
+        <!-- Scale line and marker -->
+        <div id="scale">
+            <div id="marker"></div>
+        </div>
+        
+        <!-- Labels for the scale -->
+        <div id="scale-labels">
+            <span>0</span>
+            <span>10</span>
+        </div>
+
+        <!-- Display the score value -->
+        <p id="value">5.00</p>
+        
+        <!-- Form to submit the score -->
+        <form id="vasForm">
+            <input type="hidden" id="scoreInput" name="score" value="5.00">
+            <button type="button" onclick="submitScore()">Submit</button>
+        </form>
+    </div>
+    
+    <script>
+        const marker = document.getElementById('marker');
+        const scale = document.getElementById('scale');
+        const valueDisplay = document.getElementById('value');
+        const scoreInput = document.getElementById('scoreInput');
+
+        // Function to update the score and marker position
+        function updateScore(newPosition) {
+            const scaleWidth = scale.offsetWidth;
+            let score = (newPosition / scaleWidth) * 10;
+            score = Math.max(0, Math.min(score, 10)).toFixed(2); // Limit score between 0 and 10
+            valueDisplay.textContent = score;
+            scoreInput.value = score;
+        }
+
+        // Make marker draggable
+        marker.addEventListener('mousedown', function(event) {
+            const onMouseMove = (e) => {
+                const newPosition = e.clientX - scale.getBoundingClientRect().left;
+                updateScore(newPosition);
+                marker.style.left = `${Math.max(0, Math.min(newPosition, scale.offsetWidth))}px`;
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+
+            document.addEventListener('mouseup', () => {
+                document.removeEventListener('mousemove', onMouseMove);
+            }, { once: true });
+        });
+
+        // Make the scale clickable
+        scale.addEventListener('click', function(event) {
+            const newPosition = event.clientX - scale.getBoundingClientRect().left;
+            updateScore(newPosition);
+            marker.style.left = `${Math.max(0, Math.min(newPosition, scale.offsetWidth))}px`;
+        });
+
+        // Function to handle submission
+        function submitScore() {
+            const score = scoreInput.value;
+            fetch('http://localhost:3000/submit-score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ score }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Score submitted successfully!');
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('There was an error submitting your score.');
+            });
+        }
+    </script>
+</body>
+</html>
