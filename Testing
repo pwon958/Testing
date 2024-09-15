@@ -5,132 +5,189 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VAS Pain Scale</title>
     <style>
-        /* Container for the VAS scale */
-        .container {
-            width: 70%;
-            margin: 0 auto;
-            padding: 20px;
-            border: 1px solid #ccc;
+        body {
+            font-family: Arial, sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 20px;
         }
-        
-        /* Horizontal scale line */
-        #scale {
-            width: 80%;
-            height: 4px;
-            background: #000;
-            margin: 40px auto;
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        .rectangle {
+            width: 70vw; /* 70% of viewport width */
+            max-width: 800px; /* Maximum width */
+            height: 150px; /* Adjust height as needed */
+            margin: 0 auto; /* Center the box horizontally */
+            border: 2px solid black;
             position: relative;
+            padding: 0 20px; /* Add padding to prevent touching sides */
+            box-sizing: border-box; /* Include padding in the width calculation */
         }
-        
-        /* Red marker to drag on the scale */
-        #marker {
-            width: 15px;
-            height: 15px;
-            background: red;
-            border-radius: 50%;
+
+        .line-container {
             position: absolute;
-            top: -5px;
+            top: 50%;
             left: 50%;
+            width: calc(100% - 40px); /* Adjust width for padding */
+            height: 2px;
+            background-color: black;
+            transform: translate(-50%, -50%); /* Center the container within the box */
+            border-top: 2px solid black;
+        }
+
+        .line {
+            position: relative;
+            width: 100%;
+            height: 2px;
+            background-color: black;
+        }
+
+        .line::before, .line::after {
+            content: '';
+            position: absolute;
+            width: 2px; /* Width of the perpendicular lines */
+            height: 15px; /* Height of the perpendicular lines */
+            background-color: black;
+            top: 50%;
+        }
+
+        .line::before {
+            left: 0; /* Position the left perpendicular line */
+        }
+
+        .line::after {
+            right: 0; /* Position the right perpendicular line */
+        }
+
+        .label {
+            position: absolute;
+            font-size: 18px; /* Make the labels bigger */
+            font-weight: bold;
+            top: 100%; /* Position labels below the lines */
+            transform: translateY(5px); /* Adjust vertical positioning */
+        }
+
+        .label.left {
+            left: 0;
+            transform: translate(-50%, 5px); /* Center the label below the left line */
+        }
+
+        .label.right {
+            right: 0;
+            transform: translate(50%, 5px); /* Center the label below the right line */
+        }
+
+        .circle {
+            position: absolute;
+            width: 0.5cm; /* Diameter of the circle */
+            height: 0.5cm; /* Diameter of the circle */
+            background-color: red;
+            border-radius: 50%;
             cursor: pointer;
+            transform: translate(-50%, -50%); /* Center the circle */
         }
-        
-        /* Labels for 0 and 10 on the scale */
-        #scale-labels {
-            display: flex;
-            justify-content: space-between;
-            width: 80%;
-            margin: 0 auto;
-        }
-        
-        /* Submit button styling */
-        button {
+
+        .value-display {
             margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
+            font-size: 24px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>VAS Pain Scale</h1>
-        <!-- Scale line and marker -->
-        <div id="scale">
-            <div id="marker"></div>
+    <h1>VAS Pain Scale</h1>
+    <div class="rectangle">
+        <div class="line-container">
+            <div class="line" id="scale-line">
+                <span class="label left">0</span>
+                <span class="label right">10</span>
+                <div class="circle" id="draggable-circle"></div> <!-- Red circle in the middle -->
+            </div>
         </div>
-        
-        <!-- Labels for the scale -->
-        <div id="scale-labels">
-            <span>0</span>
-            <span>10</span>
-        </div>
-
-        <!-- Display the score value -->
-        <p id="value">5.00</p>
-        
-        <!-- Form to submit the score -->
-        <form id="vasForm">
-            <input type="hidden" id="scoreInput" name="score" value="5.00">
-            <button type="button" onclick="submitScore()">Submit</button>
-        </form>
     </div>
+    <div class="value-display" id="value-display">5.00</div> <!-- Display value -->
     
     <script>
-        const marker = document.getElementById('marker');
-        const scale = document.getElementById('scale');
-        const valueDisplay = document.getElementById('value');
-        const scoreInput = document.getElementById('scoreInput');
+        const circle = document.getElementById('draggable-circle');
+        const scaleLine = document.getElementById('scale-line');
+        const valueDisplay = document.getElementById('value-display');
+        let isDragging = false;
 
-        // Function to update the score and marker position
-        function updateScore(newPosition) {
-            const scaleWidth = scale.offsetWidth;
-            let score = (newPosition / scaleWidth) * 10;
-            score = Math.max(0, Math.min(score, 10)).toFixed(2); // Limit score between 0 and 10
-            valueDisplay.textContent = score;
-            scoreInput.value = score;
+        function updateCirclePosition(clientX) {
+            const scaleLineRect = scaleLine.getBoundingClientRect();
+            const circleRadius = circle.offsetWidth / 2;
+
+            // Calculate new left position of the circle
+            const newLeft = clientX - scaleLineRect.left;
+            // Ensure the circle stays within the bounds of the scale line
+            const minLeft = circleRadius;
+            const maxLeft = scaleLineRect.width - circleRadius;
+            const clampedLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+
+            circle.style.left = `${clampedLeft}px`;
+
+            // Calculate and update the value
+            const scaleWidth = scaleLineRect.width - circleRadius * 2;
+            const value = ((clampedLeft - circleRadius) / scaleWidth) * 10;
+            valueDisplay.textContent = value.toFixed(2);
         }
 
-        // Make marker draggable
-        marker.addEventListener('mousedown', function(event) {
-            const onMouseMove = (e) => {
-                const newPosition = e.clientX - scale.getBoundingClientRect().left;
-                updateScore(newPosition);
-                marker.style.left = `${Math.max(0, Math.min(newPosition, scale.offsetWidth))}px`;
-            };
-
+        circle.addEventListener('mousedown', (e) => {
+            isDragging = true;
             document.addEventListener('mousemove', onMouseMove);
-
             document.addEventListener('mouseup', () => {
+                isDragging = false;
                 document.removeEventListener('mousemove', onMouseMove);
-            }, { once: true });
-        });
-
-        // Make the scale clickable
-        scale.addEventListener('click', function(event) {
-            const newPosition = event.clientX - scale.getBoundingClientRect().left;
-            updateScore(newPosition);
-            marker.style.left = `${Math.max(0, Math.min(newPosition, scale.offsetWidth))}px`;
-        });
-
-        // Function to handle submission
-        function submitScore() {
-            const score = scoreInput.value;
-            fetch('http://localhost:3000/submit-score', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ score }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert('Score submitted successfully!');
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                alert('There was an error submitting your score.');
             });
+        });
+
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            updateCirclePosition(e.clientX);
         }
+
+        circle.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            document.addEventListener('touchmove', onTouchMove);
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+                document.removeEventListener('touchmove', onTouchMove);
+            });
+        });
+
+        function onTouchMove(e) {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            updateCirclePosition(touch.clientX);
+        }
+
+        scaleLine.addEventListener('click', (e) => {
+            if (!isDragging) {
+                updateCirclePosition(e.clientX);
+            }
+        });
+
+        scaleLine.addEventListener('touchend', (e) => {
+            const touch = e.changedTouches[0];
+            updateCirclePosition(touch.clientX);
+        });
+
+        // Handle click on scale line to move circle
+        scaleLine.addEventListener('mousedown', (e) => {
+            if (!isDragging) {
+                updateCirclePosition(e.clientX);
+            }
+        });
+
+        scaleLine.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            updateCirclePosition(touch.clientX);
+        });
     </script>
 </body>
 </html>
